@@ -11,13 +11,13 @@ def npv(rate: float, cashflows: list[float]) -> float:
 
 def build_savings_cf(
     years: int,
-    dh_annual_cost_now: float,     # €/y today
+    dh_annual_cost_now: float,     # €/v today
     elec_price_now: float,         # €/kWh (or €/MWh – kunhan yksiköt sopivat kulutuksen kanssa)
-    gshp_annual_elec_use: float,   # kWh/y (tai MWh/y sopivin yksiköin)
-    dh_growth: float,              # e.g. 0.02
-    elec_growth: float,            # e.g. 0.03
+    gshp_annual_elec_use: float,   # kWh/v (tai MWh/v sopivin yksiköin)
+    dh_growth: float,              # esim. 0.02
+    elec_growth: float,            # esim. 0.03
 ):
-    """Palauttaa listan vuosittaisista nettoSÄÄSTÖistä (DH − sähkö ML), pituus years (vuodet 1..years)."""
+    """Palauttaa listan vuosittaisista nettoSÄÄSTÖistä (DH − ML sähkö), pituus years (vuodet 1..years)."""
     cfs = []
     for y in range(1, years + 1):
         dh_cost_y = dh_annual_cost_now * ((1 + dh_growth) ** (y - 1))
@@ -26,6 +26,14 @@ def build_savings_cf(
         saving_y = dh_cost_y - ml_operating_y
         cfs.append(saving_y)
     return cfs
+
+def euro_fmt(x, decimals: int = 0) -> str:
+    """Muotoilu: tuhannet välilyönnillä, desimaalit pilkulla, perään ' €'."""
+    try:
+        s = f"{x:,.{decimals}f}".replace(",", " ").replace(".", ",")
+        return s + " €"
+    except Exception:
+        return f"{x} €"
 
 # ---------- Sidebar inputs ----------
 st.sidebar.title("Syötteet")
@@ -78,24 +86,34 @@ df = pd.DataFrame(
 )
 
 st.subheader("NPV-taulukko (€, B−A)")
-st.dataframe(df.style.format("{:,.0f}").background_gradient(axis=None), use_container_width=True)
+
+# Turvallinen renderöinti: käytä gradienttia vain jos matplotlib löytyy
+try:
+    import matplotlib  # noqa: F401
+    styled = (
+        df.style
+        .format(lambda x: euro_fmt(x, 0))
+        .background_gradient(axis=None)
+    )
+    st.dataframe(styled, use_container_width=True)
+except Exception:
+    st.dataframe(df.style.format(lambda x: euro_fmt(x, 0)), use_container_width=True)
 
 # ---------- Heatmap ----------
 st.subheader("Lämpökartta: NPV (€, B−A)")
 df_heat = df.reset_index().melt(id_vars=df.index.name or "index", var_name="Kaukolämmön kasvu", value_name="NPV (€)")
-# Selkeämmät labelit
-df_heat = df_heat.rename(columns={df.index.name or "index": "Sähkön kasvu"})
+df_heat = df_heat.rename(columns={df.index_name if hasattr(df, 'index_name') else (df.index.name or "index"): "Sähkön kasvu"})
 
 heat = alt.Chart(df_heat).mark_rect().encode(
     x=alt.X("Kaukolämmön kasvu:N", title="Kaukolämmön hinnan kasvu"),
     y=alt.Y("Sähkön kasvu:N", title="Sähkön hinnan kasvu"),
     color=alt.Color("NPV (€):Q", scale=alt.Scale(scheme="redyellowgreen")),
-    tooltip=["Sähkön kasvu", "Kaukolämmön kasvu", alt.Tooltip("NPV (€):Q", format=",.0f")]
+    tooltip=["Sähkön kasvu", "Kaukolämmön kasvu", alt.Tooltip("NPV (€):Q", format=",.0f", title="NPV (€)")]
 ).properties(height=420)
 st.altair_chart(heat, use_container_width=True)
 
 st.markdown("---")
 st.caption(
     "NPV lasketaan: t=0 investointi (neg.) + vuosittaiset säästöt (kaukolämpö − maalämmön sähkökulut). "
-    "Kasvu %:t vaikuttavat **hintakehitykseen** (€/y ja €/kWh), ei kulutukseen."
+    "Kasvu %:t vaikuttavat **hintakehitykseen** (€/v ja €/kWh), ei kulutukseen."
 )
