@@ -60,8 +60,8 @@ st.write(
 )
 
 # ---------- Build the 4x4 NPV table ----------
-elec_growths = [0.01, 0.02, 0.03, 0.04]
-dh_growths   = [0.01, 0.02, 0.03, 0.04]
+elec_growths = [0.00, 0.01, 0.02, 0.03, 0.04]
+dh_growths   = [0.00, 0.01, 0.02, 0.03, 0.04]
 
 npv_matrix = []
 for eg in elec_growths:
