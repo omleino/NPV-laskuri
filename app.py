@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import altair as alt
 
-st.set_page_config(page_title="Maalämpö NPV – herkkyys 1–4 %", layout="wide")
+st.set_page_config(page_title="Maalämpö NPV – herkkyys 0–4 %", layout="wide")
 
 # ---------- Helpers ----------
 def npv(rate: float, cashflows: list[float]) -> float:
